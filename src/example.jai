@@ -5,18 +5,18 @@
 
 main :: () {
   useValidator : bool = ifx 1 {
-	  // test if glslangValidator exists
-	  process_result := run_command("which", "glslangValidator", capture_and_return_output = true);
-	  process_result.exit_code == 0;
-	}
+    // test if glslangValidator exists
+    process_result := run_command("which", "glslangValidator", capture_and_return_output = true);
+    process_result.exit_code == 0;
+  }
 
   {
-	  print("%\n", my_jai_vertex_shader_string);
-		if useValidator {
+    print("%\n", my_jai_vertex_shader_string);
+    if useValidator {
       filename := "my_jai_vertex_shader.vert";
       write_entire_file(filename, my_jai_vertex_shader_string);
       process_result := run_command("glslangValidator", filename);
-		}
+    }
   }
   print("==========\n\n");
   {
