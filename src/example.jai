@@ -1,10 +1,30 @@
 #import "Basic";
 #import "Math";
+#import "Process";
+#import "File";
 
 main :: () {
-	print("%\n", my_jai_vertex_shader_string);
-	print("==========\n\n");
-	print("%\n", my_jai_fragment_shader_string);
+  useValidator : bool = ifx 1 {
+    // test if glslangValidator exists
+    process_result := run_command("which", "glslangValidator", capture_and_return_output = true);
+    process_result.exit_code == 0;
+  }
+
+  {
+    print("%\n", my_jai_vertex_shader_string);
+    if useValidator {
+      filename := "my_jai_vertex_shader.vert";
+      write_entire_file(filename, my_jai_vertex_shader_string);
+      process_result := run_command("glslangValidator", filename);
+    }
+  }
+  print("==========\n\n");
+  {
+    print("%\n", my_jai_fragment_shader_string);
+    filename := "my_jai_fragment_shader.frag";
+    write_entire_file(filename, my_jai_fragment_shader_string);
+    process_result := run_command("glslangValidator", filename);
+  }
 }
 
 list: [..]int;
@@ -47,7 +67,7 @@ my_jai_vertex_shader :: (using in : VertexShader_In, using un : VertexShader_Uni
 	while i < 3 {
 		i += 1;
 	}
-	
+
 	for l:1..2 {
 	}
 	
