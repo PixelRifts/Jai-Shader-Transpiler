@@ -1,6 +1,5 @@
 #import "Basic";
 #import "Compiler";
-#import "Program_Print";
 #import "String";
 #import "Hash_Table";
 
@@ -18,7 +17,7 @@ build :: () {
   options.output_executable_name = "Shaders";
   set_build_options(options, w);
   
-  jai_to_glsl_plugin = jglsl_get_plugin();
+  jai_to_glsl_plugin = get_plugin();
   jai_to_glsl_plugin.workspace = w;
   
   compiler_begin_intercept(w);
@@ -33,7 +32,7 @@ message_loop :: (w: Workspace) {
   while true {
     message := compiler_wait_for_message();
     
-    jglsl_receive_message(jai_to_glsl_plugin, message);
+    convert_procs(jai_to_glsl_plugin, message);
     
     if message.kind == .COMPLETE break;
   }

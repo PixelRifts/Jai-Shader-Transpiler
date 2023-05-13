@@ -1,41 +1,13 @@
-
-// get_plugin :: () -> *Metaprogram_Plugin {
-//   p := New(Metaprogram_Plugin);
-  
-//   p.message = receive_message;
-//   p.shutdown = p => { free(p); };
-  
-//   return p;
-// }
-
-// receive_message :: (p: *Metaprogram_Plugin, message: *Message) {
-//   if message.kind == {
-//     case .TYPECHECKED; {
-//       tc := cast(*Message_Typechecked) message;
-//       for tc.procedure_bodies {
-//         if proc_has_note(it.expression.header, "vertex_shader") {
-//           s := write_vertex_shader(it.expression);
-//           add_build_string(s, p.workspace);
-//         }
-//         if proc_has_note(it.expression.header, "fragment_shader") {
-//           s := write_fragment_shader(it.expression);
-//           add_build_string(s, p.workspace);
-//         }
-//       }
-//     }
-//   }
-// }
-
-jglsl_get_plugin :: () -> *Metaprogram_Plugin {
+get_plugin :: () -> *Metaprogram_Plugin {
   p := New(Metaprogram_Plugin);
   
-  p.message = jglsl_receive_message;
+  p.message = convert_procs;
   p.shutdown = p => { free(p); };
   
   return p;
 }
 
-jglsl_receive_message :: (p: *Metaprogram_Plugin, message: *Message) {
+convert_procs :: (p: *Metaprogram_Plugin, message: *Message) {
   if message.kind == {
     case .TYPECHECKED; {
       tc := cast(*Message_Typechecked) message;
@@ -132,15 +104,171 @@ jglsl_receive_message :: (p: *Metaprogram_Plugin, message: *Message) {
 // Here are some functions that glsl supports
 // Unfortunately this is going to mean that you have to import this module in the places where
 // you want to use these functions.
+#scope_export
 
-smoothstep :: (edge0: float, edge1: float, x: float) -> float {
-    t := clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t);
+radians :: inline (degrees: float) -> float {
+  return degrees * xx (3.1415926535/ 180);
 }
 
+degrees :: inline (radians: float) -> float {
+  return radians * xx (180 / 3.1415926535);
+}
+
+exp2 :: inline (x: float) -> float {
+  return xx pow(2, x);
+}
+
+fma :: inline (a: $T, b: T, c: T) -> T
+#modify { return T == float || T == float64; }
+{
+  return a * b + c;
+}
+
+fract :: inline (x: $T) -> T
+#modify { return T == float || T == float64; }
+{
+  return x - floor(x);
+}
+
+inversesqrt :: inline (x: $T) -> T
+#modify { return T == float || T == float64; }
+{
+  return 1 / sqrt(x);
+}
+
+log2 :: inline (x: $T) -> T
+#modify { return T == float || T == float64; }
+{
+  return log(x) / log(2);
+}
+
+mix :: (x: $T, y: T, t: $M) -> T #expand
+#modify { return M == float || M == float64 || M == bool; }
+{
+  return lerp(x, y, xx t);
+}
+
+mod :: inline (x: $T, y: T) -> T
+#modify { return T == float || T == float64; }
+{
+  return x - y * floor(x / y);
+}
+
+
+round :: (x: $T) -> T
+#modify { return T == float || T == float64; }
+{
+  if x - floor(x) > 0.5 return ceil(x);
+  else return floor(x);
+}
+
+roundEven :: (x: $T) -> T
+#modify { return T == float || T == float64; }
+{
+  pivot := x - floor(x);
+  if pivot > 0.5 return ceil(x);
+  else if pivot < 0.5 return floor(x);
+  else return ifx is_even(ceil(x)) then ceil(x) else floor(x);
+}
+
+sign :: (x: $T) -> T
+#modify { return is_number(T); }
+{
+  if x == 0 return 0;
+  return ifx x < 0 then -1 else 1;
+}
+
+smoothstep :: inline (edge0: $T, edge1: T, x: T) -> T
+#modify { return T == float || T == float64; }
+{
+  t := clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+step :: (x: $T, pivot: T) -> T
+#modify { return T == float || T == float64; }
+{
+  return ifx x < pivot then 0 else 1;
+}
+
+trunc :: floor;
+
+faceforward :: inline (N: $T, I: T, Nref: T) -> T
+#modify { return T == Vector2 || T == Vector3 || T == Vector4; }
+{
+  return ifx dot(Nref, I) < 0 then N else -N;
+}
+
+normalize :: inline (v: $T) -> T
+#modify { return T == Vector2 || T == Vector3 || T == Vector4; }
+{
+  return v / length(v);
+}
+
+reflect :: (I: $T, N: T) -> T
+#modify { return T == Vector2 || T == Vector3 || T == Vector4; }
+{
+  return I - 2 * dot(N, I) * N;
+}
+
+refract :: (I: $T, N: T, eta: float) -> T
+#modify { return T == Vector2 || T == Vector3 || T == Vector4; }
+{
+  k := 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
+  if (k < 0.0)
+      return .{};
+  else
+      return eta * I - (eta * dot(N, I) + sqrt(k)) * N;
+}
+
+#scope_file
+
+is_number :: (T: Type) -> bool {
+  return T == float ||
+         T == float64 ||
+         T == int ||
+         T == s8  ||
+         T == s16 ||
+         T == s32 ||
+         T == s64 ||
+         T == u8  ||
+         T == u16 ||
+         T == u32 ||
+         T == u64;
+}
+
+INBUILT_FUNCTIONS_INTERNAL_ARRAY :: string.[
+  "sin", "cos", "tan", "asin", "acos", "atan",
+  "degrees", "radians",
+  
+  "abs", "ceil", "exp", "exp2", "floor", "isinf", "isnan", "log", "log2", "max", "min",
+  "mix", "mod", "pow", "round", "roundEven", "sign", "smoothstep", "sqrt", "step", "trunc",
+  
+  "cross", "distance", "dot", "faceforward", "length", "normalize", 
+  
+  // These don't exist in jai yet and I have no idea how to implement them efficiently :P
+  // "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+  // "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4",
+  
+  // These require higher glsl versions than 3.3 which is hardcoded for now
+  // "fma",
+  
+  // These require "out" parameters, which haven't been implemented yet
+  // "modf"
+
+  // These require adding vectors of different base types, which haven't been implemented yet
+  // "equal", "notEqual"
+];
+// This is an obvious case for a HashSet... but whatever
+INBUILT_FUNCTIONS :: #run -> Table(string, bool) {
+  fn_str_table: Table(string, bool);
+  for INBUILT_FUNCTIONS_INTERNAL_ARRAY table_add(*fn_str_table, it, true);
+  return fn_str_table;
+}
 // END
 
 #scope_file
+
 
 proc_has_note :: (node : *Code_Procedure_Header, note : string) -> bool #expand {
   for node.notes if it.text == note return true;
@@ -517,7 +645,7 @@ print_expr_glslstyle :: (using ctx: *Shader_Write_Context, sb : *String_Builder,
         append(sb, ")");
         
         return;
-      } else print_expression(sb, node);
+      } else PP.print_expression(sb, node);
     }
 
     case .UNARY_OPERATOR; {
@@ -537,7 +665,7 @@ print_expr_glslstyle :: (using ctx: *Shader_Write_Context, sb : *String_Builder,
       handle_procedure_call(ctx, sb, xx node);
     }
     
-    case; print_expression(sb, node);
+    case; PP.print_expression(sb, node);
   }
 }
 
@@ -576,7 +704,12 @@ handle_procedure_call :: (ctx: *Shader_Write_Context, sb: *String_Builder, pc: *
       }
     } // !found
   }
-  print_expression(sb, pc);
+  PP.print_expression(sb, pc.procedure_expression);
+  append(sb, "(");
+  for pc.arguments_sorted {
+    print_expr_glslstyle(ctx, sb, it);
+  }
+  append(sb, ")");
 }
 
 print_function :: (ctx: *Shader_Write_Context, sb: *String_Builder, fn: Code_Procedure_Header) {
@@ -631,20 +764,6 @@ print_prototype :: (sb: *String_Builder, header: *Code_Procedure_Header) {
     if it_index != header.arguments.count-1 append(sb, ", ");
   }
   append(sb, ");\n");
-}
-
-INBUILT_FUNCTIONS_INTERNAL_ARRAY :: string.[
-  "sin", "cos", "tan", "asin", "acos", "atan",
-  // TODO(voxel): Create Jai Versions of these
-  // "degrees", "radians",
-  // "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-];
-
-// This is an obvious case for a HashSet... but whatever
-INBUILT_FUNCTIONS :: #run -> Table(string, bool) {
-  fn_str_table: Table(string, bool);
-  for INBUILT_FUNCTIONS_INTERNAL_ARRAY table_add(*fn_str_table, it, true);
-  return fn_str_table;
 }
 
 // This is some hardcoding, and is incomplete.
@@ -740,6 +859,7 @@ currently_waiting_contexts: [..] Shader_Write_Context;
 
 #import "Basic";
 #import "Compiler";
-#import "Program_Print";
+PP :: #import "Program_Print";
 #import "String";
+#import "Math";
 #import "Hash_Table";

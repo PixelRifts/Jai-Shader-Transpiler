@@ -28,28 +28,17 @@ VertexShader_In :: struct {
 VertexShader_Out :: struct {
   gl_Position : Vector4;
   
-  color : Vector4;
+  v_color : Vector4;
 }
 
 
-
-c :: () {
-
-}
-
-b :: () {
-  
-}
-
-a :: (one: int, two: float, three: float64) {
-  b();
-}
 
 my_jai_vertex_shader :: (using in : VertexShader_In, using un : VertexShader_Uniforms)
                              -> VertexShader_Out {
   using out: VertexShader_Out;
   
-  a(1, 2, 3);
+  b := trunc(10.5);
+  normalize(Vector2.{10, 20});
   
   return out;
 } @vertex_shader
@@ -67,7 +56,7 @@ FragmentShader_Out :: struct {
 my_jai_fragment_shader :: (using in : VertexShader_Out, using un : FragmentShader_Uniforms) -> FragmentShader_Out {
   using out: FragmentShader_Out;
   
-  out_color = color;
+  out_color = v_color;
   
   return out;
 } @fragment_shader
