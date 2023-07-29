@@ -78,15 +78,15 @@ print_glsl_in_vars :: (sb: *String_Builder, node: *Code_Procedure_Header, output
     compiler_report(tprint("Glsl Backend: Shader Input is not a struct, but is a %\n", struct_type_generic.type), make_location(node.arguments[0]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
-  for struct_type.members {
-    if begins_with(it.name, "gl_") continue;
+  for * struct_type.members {
+    if member_has_note(it, "inbuilt") continue;
     
     if output_layout
       append(sb, tprint("layout (location=%) in ", it_index));
     else
       append(sb, "in ");
       
-    print_glsl_member_with_typename(sb, *it);
+    print_glsl_member_with_typename(sb, it);
     append(sb, ";\n");
   }
   append(sb, "\n");
@@ -98,11 +98,11 @@ print_glsl_out_vars :: (sb : *String_Builder, node : *Code_Procedure_Header) {
     compiler_report("Glsl Backend: Shader Output is not a struct\n", make_location(node.returns[0]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
-  for struct_type.members {
-    if begins_with(it.name, "gl_") continue;
+  for * struct_type.members {
+    if member_has_note(it, "inbuilt") continue;
     
     append(sb, "out ");
-    print_glsl_member_with_typename(sb, *it);
+    print_glsl_member_with_typename(sb, it);
     append(sb, ";\n");
   }
   append(sb, "\n");
@@ -114,9 +114,9 @@ print_glsl_uniforms :: (sb : *String_Builder, node : *Code_Procedure_Header) {
     compiler_report("Glsl Backend: Shader Input is not a struct\n", make_location(node.arguments[1]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
-  for struct_type.members {
+  for * struct_type.members {
     append(sb, "uniform ");
-    print_glsl_member_with_typename(sb, *it);
+    print_glsl_member_with_typename(sb, it);
     append(sb, ";\n");
   }
   append(sb, "\n");
@@ -191,9 +191,9 @@ print_glsl_stmt :: (using ctx: *Shader_Write_Context, sb: *String_Builder,
           print_glsl_type(sb, op.type_inst.result);
         else
           print_glsl_type(sb, op.expression.type);
-        
         append(sb, " ");
         append(sb, op.name);
+        
         if op.expression {
           append(sb, " = ");
           print_glsl_expr(ctx, sb, op.expression);
@@ -438,6 +438,13 @@ print_glsl_function :: (ctx: *Shader_Write_Context, sb: *String_Builder, fn: Cod
   append(sb, ") {\n");
   print_glsl_stmt(ctx, sb, fn.body_or_null.block);
   append(sb, "}\n");
+}
+
+#scope_file
+
+member_has_note :: (member: *Type_Info_Struct_Member, note: string) -> bool {
+  for member.notes if it == note return true;
+  return false;
 }
 
 // This is some hardcoding, and is incomplete.
