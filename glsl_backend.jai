@@ -8,11 +8,11 @@ GLSL_VERSION :: "#version 330 core\n";
 
 write_glsl_vertex_shader :: (ctx: *Shader_Write_Context, node: *Code_Procedure_Body) -> string {
   if node.header.returns.count != 1
-    compiler_report("GLSL Backend: Jai Vertex Shader must return a structure with at least a Vector4 gl_Position field");
+    compiler_report("GLSL Backend: Jai Vertex Shader must return a structure with at least a Vector4 gl_Position field", make_location(node.header));
   if node.header.arguments.count != 2
-    compiler_report("GLSL Backend: Jai Vertex Shader must get two structures as arguments (Vertex Input and Uniforms)");
+    compiler_report("GLSL Backend: Jai Vertex Shader must get two structures as arguments (Vertex Input and Uniforms)", make_location(node.header));
   if node.header.parameter_usings.count != 2
-    compiler_report("GLSL Backend: The struct arguments to a Jai Vertex Shader must be marked 'using'");
+    compiler_report("GLSL Backend: The struct arguments to a Jai Vertex Shader must be marked 'using'", make_location(node.header));
 
   // main function string builder
   main_sb: String_Builder;
@@ -28,11 +28,11 @@ write_glsl_vertex_shader :: (ctx: *Shader_Write_Context, node: *Code_Procedure_B
 
 write_glsl_fragment_shader :: (ctx: *Shader_Write_Context, node: *Code_Procedure_Body) -> string {
   if node.header.returns.count != 1
-    compiler_report("GLSL Backend: Jai Fragment Shader must return a structure with at least one Vector4");
+    compiler_report("GLSL Backend: Jai Fragment Shader must return a structure with at least one Vector4", make_location(node.header));
   if node.header.arguments.count != 2
-    compiler_report("GLSL Backend: Jai Fragment Shader must get two structures as arguments (Vertex output and Uniforms)");
+    compiler_report("GLSL Backend: Jai Fragment Shader must get two structures as arguments (Vertex output and Uniforms)", make_location(node.header));
   if node.header.parameter_usings.count != 2
-    compiler_report("GLSL Backend: The struct arguments to a Jai Fragment Shader must be marked 'using'");
+    compiler_report("GLSL Backend: The struct arguments to a Jai Fragment Shader must be marked 'using'", make_location(node.header));
 
   // main function string builder
   main_sb: String_Builder;
@@ -72,10 +72,10 @@ write_glsl_shader_code :: (ctx: *Shader_Write_Context, node: *Code_Procedure_Bod
 
 // In, Out, Uniforms, and Prototypes
 
-print_glsl_in_vars :: (sb : *String_Builder, node : *Code_Procedure_Header, output_layout := true) {
+print_glsl_in_vars :: (sb: *String_Builder, node: *Code_Procedure_Header, output_layout := true) {
   struct_type_generic := node.arguments[0].type_inst.result;
   if struct_type_generic.type != .STRUCT
-    compiler_report(tprint("Glsl Backend: Shader Input is not a struct, but is a %\n", struct_type_generic.type));
+    compiler_report(tprint("Glsl Backend: Shader Input is not a struct, but is a %\n", struct_type_generic.type), make_location(node.arguments[0]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
   for struct_type.members {
@@ -95,7 +95,7 @@ print_glsl_in_vars :: (sb : *String_Builder, node : *Code_Procedure_Header, outp
 print_glsl_out_vars :: (sb : *String_Builder, node : *Code_Procedure_Header) {
   struct_type_generic := node.returns[0].type_inst.result;
   if struct_type_generic.type != .STRUCT
-    compiler_report("Glsl Backend: Shader Output is not a struct\n");
+    compiler_report("Glsl Backend: Shader Output is not a struct\n", make_location(node.returns[0]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
   for struct_type.members {
@@ -111,7 +111,7 @@ print_glsl_out_vars :: (sb : *String_Builder, node : *Code_Procedure_Header) {
 print_glsl_uniforms :: (sb : *String_Builder, node : *Code_Procedure_Header) {
   struct_type_generic := node.arguments[1].type_inst.result;
   if struct_type_generic.type != .STRUCT
-    compiler_report("Glsl Backend: Shader Input is not a struct\n");
+    compiler_report("Glsl Backend: Shader Input is not a struct\n", make_location(node.arguments[1]));
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
   for struct_type.members {
@@ -305,9 +305,9 @@ print_glsl_stmt :: (using ctx: *Shader_Write_Context, sb: *String_Builder,
         add_indents(sb, indent);
         op := cast(*Code_For) it;
         if op.macro_expansion_procedure_call || !op.iteration_expression_right
-          compiler_report("Can't use special iterators in Jai Shaders");
+          compiler_report("Can't use special iterators in Jai Shaders", make_location(op));
         if op.for_flags & .POINTER
-          compiler_report("Iteration by Pointers is disallowed in Jai Shaders");
+          compiler_report("Iteration by Pointers is disallowed in Jai Shaders", make_location(op));
         
         append(sb, "for (int ");
         append(sb, op.ident_decl.name);
@@ -336,7 +336,7 @@ print_glsl_stmt :: (using ctx: *Shader_Write_Context, sb: *String_Builder,
           print_glsl_expr(ctx, sb, op.arguments_sorted[0]);
           append(sb, ";\n");
         } else
-          compiler_report("Multiple Return Arguments Disallowed in Jai Shaders");
+          compiler_report("Multiple Return Arguments Disallowed in Jai Shaders", make_location(op));
       }
       
       case .PROCEDURE_CALL; {
@@ -349,7 +349,7 @@ print_glsl_stmt :: (using ctx: *Shader_Write_Context, sb: *String_Builder,
       case .USING; continue;
       
       case; {
-        compiler_report(tprint("The statement of type '%' is not supported in Jai Shaders", it.kind));
+        compiler_report(tprint("The statement of type '%' is not supported in Jai Shaders", it.kind), make_location(it));
       }
     }
   }
