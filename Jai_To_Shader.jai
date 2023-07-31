@@ -35,11 +35,12 @@ convert_procs :: (p: *Metaprogram_Plugin, message: *Message) {
           ctx.main_fn = it.expression;
           ctx.language = .GLSL;
           ctx.name = it.expression.header.name;
-          ctx.type = .Vertex;
           s: string;
           if proc_has_note(it.expression.header, "vertex_shader") {
+            ctx.type = .Vertex;
             s = write_vertex_shader(*ctx, it.expression);
           } else if proc_has_note(it.expression.header, "fragment_shader") {
+            ctx.type = .Fragment;
             s = write_fragment_shader(*ctx, it.expression);
           } else {
             compiler_report("Jai Shader Transpiler: No Shader type tag found. Use @vertex_shader or @fragment_shader",
@@ -59,11 +60,12 @@ convert_procs :: (p: *Metaprogram_Plugin, message: *Message) {
           ctx.main_fn = it.expression;
           ctx.language = .HLSL;
           ctx.name = it.expression.header.name;
-          ctx.type = .Vertex;
           s: string;
           if proc_has_note(it.expression.header, "vertex_shader") {
+            ctx.type = .Vertex;
             s = write_vertex_shader(*ctx, it.expression);
           } else if proc_has_note(it.expression.header, "fragment_shader") {
+            ctx.type = .Fragment;
             s = write_fragment_shader(*ctx, it.expression);
           } else {
             compiler_report("Jai Shader Transpiler: No Shader type tag found. Use @vertex_shader or @fragment_shader",
@@ -394,6 +396,8 @@ INBUILT_FUNCTIONS_INTERNAL_ARRAY :: string.[
   
   "texture",
   
+  "reflect", "refract", "fract",
+  
   // These don't exist in jai yet and I have no idea how to implement them efficiently :P
   // "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
   // "dFdx", "dFdy", "fwidth", "noise1", "noise2", "noise3", "noise4",
@@ -530,17 +534,17 @@ operator_string :: (op : s32) -> string {
     case #char "."; return ".";
   }
   if cast(Operator_Type)op == {
-    case .PLUS_EQUALS; return "+=";
-    case .MINUS_EQUALS; return "-=";
-    case .TIMES_EQUALS; return "*=";
-    case .DIV_EQUALS; return "/=";
-    case .MOD_EQUALS; return "%=";
+    case .PLUS_ASSIGN; return "+=";
+    case .MINUS_ASSIGN; return "-=";
+    case .TIMES_ASSIGN; return "*=";
+    case .DIV_ASSIGN; return "/=";
+    case .MOD_ASSIGN; return "%=";
     case .IS_EQUAL; return "==";
     case .IS_NOT_EQUAL; return "!=";
     case .LOGICAL_AND; return "&&";
     case .LOGICAL_OR; return "||";
-    case .LESS_EQUALS; return "<=";
-    case .GREATER_EQUALS; return ">=";
+    case .LESS_OR_EQUAL; return "<=";
+    case .GREATER_OR_EQUAL; return ">=";
     
     case .SHIFT_LEFT; return "<<";
     case .SHIFT_RIGHT; return ">>";
@@ -549,15 +553,15 @@ operator_string :: (op : s32) -> string {
     // But this can stay just incase...
     // case .ROTATE_LEFT; return "<<<";
     // case .ROTATE_RIGHT; return ">>>";
-    // case .SHIFT_LEFT_EQUALS; return "<<=";
-    // case .SHIFT_RIGHT_EQUALS; return ">>=";
-    // case .ROTATE_LEFT_EQUALS; return "<<<=";
-    // case .ROTATE_RIGHT_EQUALS; return ">>>=";
-    // case .BITWISE_AND_EQUALS; return "&=";
-    // case .BITWISE_OR_EQUALS; return "|=";
-    // case .BITWISE_XOR_EQUALS; return "^=";
-    // case .LOGICAL_AND_EQUALS; return "&&=";
-    // case .LOGICAL_OR_EQUALS; return "||=";
+    // case .SHIFT_LEFT_ASSIGN; return "<<=";
+    // case .SHIFT_RIGHT_ASSIGN; return ">>=";
+    // case .ROTATE_LEFT_ASSIGN; return "<<<=";
+    // case .ROTATE_RIGHT_ASSIGN; return ">>>=";
+    // case .BITWISE_AND_ASSIGN; return "&=";
+    // case .BITWISE_OR_ASSIGN; return "|=";
+    // case .BITWISE_XOR_ASSIGN; return "^=";
+    // case .LOGICAL_AND_ASSIGN; return "&&=";
+    // case .LOGICAL_OR_ASSIGN; return "||=";
     
     //case ARRAY_SUBSCRIPT; return "[]";
     

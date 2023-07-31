@@ -79,7 +79,7 @@ print_glsl_in_vars :: (sb: *String_Builder, node: *Code_Procedure_Header, output
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
   for * struct_type.members {
-    if member_has_note(it, "inbuilt") continue;
+    if member_has_note(it, "inbuilt") || begins_with(it.name, "global_") continue;
     
     if output_layout
       append(sb, tprint("layout (location=%) in ", it_index));
@@ -99,7 +99,7 @@ print_glsl_out_vars :: (sb : *String_Builder, node : *Code_Procedure_Header) {
   struct_type := cast(*Type_Info_Struct) struct_type_generic;
   
   for * struct_type.members {
-    if member_has_note(it, "inbuilt") continue;
+    if member_has_note(it, "inbuilt") || begins_with(it.name, "global_") continue;
     
     append(sb, "out ");
     print_glsl_member_with_typename(sb, it);
@@ -360,9 +360,13 @@ print_glsl_stmt :: (using ctx: *Shader_Write_Context, sb: *String_Builder,
 // Will have to add specific things for many of these
 // We can't simply print_expression in many of them because a struct literal could be a subexpression
 // which has to be converted correctly
-print_glsl_expr :: (using ctx: *Shader_Write_Context, sb : *String_Builder, node : *Code_Node) {
+print_glsl_expr :: (using ctx: *Shader_Write_Context, sb: *String_Builder, node: *Code_Node) {
   if node.kind == {
-
+    case .IDENT; {
+      id := cast(*Code_Ident) node;
+      append(sb, inbuilt_names_to_glsl_name(ctx, id.name));
+    }
+    
     case .LITERAL; {
       lit := cast(*Code_Literal) node;
       if lit.value_type == .STRUCT {
@@ -449,31 +453,42 @@ member_has_note :: (member: *Type_Info_Struct_Member, note: string) -> bool {
 
 // This is some hardcoding, and is incomplete.
 // More types need to be added here
-jai_to_glsl_type_name :: (in : string) -> string {
-  if      in == "Vector4"  return "vec4";
-  else if in == "Vector3"  return "vec3";
-  else if in == "Vector2"  return "vec2";
-  else if in == "IVector4" return "ivec4";
-  else if in == "IVector3" return "ivec3";
-  else if in == "IVector2" return "ivec2";
-  else if in == "UVector4" return "uvec4";
-  else if in == "UVector3" return "uvec3";
-  else if in == "UVector2" return "uvec2";
-  else if in == "BVector4" return "bvec4";
-  else if in == "BVector3" return "bvec3";
-  else if in == "BVector2" return "bvec2";
-  
-  else if in == "Matrix4" return "mat4";
-  else if in == "Matrix3" return "mat3";
-  else if in == "Matrix2" return "mat2";
-
-  else if in == "Sampler1D" return "sampler1D";
-  else if in == "Sampler2D" return "sampler2D";
-  else if in == "Sampler3D" return "sampler3D";
-  
-  else if in == "float64" return "double";
-  else if in == "s32" return "int";
-  
-  else return in;
+jai_to_glsl_type_map :: #run -> Table(string, string) {
+  ret: Table(string, string);
+  table_add(*ret, "s32", "int");
+  table_add(*ret, "u32", "uint");
+  table_add(*ret, "float32", "float");
+  table_add(*ret, "float64", "double");
+  table_add(*ret, "Vector2", "vec2");
+  table_add(*ret, "Vector3", "vec3");
+  table_add(*ret, "Vector4", "vec4");
+  table_add(*ret, "IVector2", "ivec2");
+  table_add(*ret, "IVector3", "ivec3");
+  table_add(*ret, "IVector4", "ivec4");
+  table_add(*ret, "UVector2", "uvec2");
+  table_add(*ret, "UVector3", "uvec3");
+  table_add(*ret, "UVector4", "uvec4");
+  table_add(*ret, "BVector2", "bvec2");
+  table_add(*ret, "BVector3", "bvec3");
+  table_add(*ret, "BVector4", "bvec4");
+  table_add(*ret, "Matrix2", "mat2");
+  table_add(*ret, "Matrix3", "mat3");
+  table_add(*ret, "Matrix4", "mat4");
+  table_add(*ret, "Sampler1D", "sampler1D");
+  table_add(*ret, "Sampler2D", "sampler2D");
+  table_add(*ret, "Sampler3D", "sampler3D");
+  return ret;
+}
+jai_to_glsl_type_name :: (in: string) -> string {
+  val, success := table_find(*jai_to_glsl_type_map, in);
+  return ifx success then val else in;
 }
 
+// TODO: convert to map
+inbuilt_names_to_glsl_name :: (ctx: *Shader_Write_Context, in: string) -> string {
+  if in == "SV_Position" {
+    if ctx.type == .Vertex   return "gl_Position";
+    if ctx.type == .Fragment return "gl_FragCoord";
+  }
+  return in;
+}
