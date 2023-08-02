@@ -7,7 +7,7 @@ Input :: #import "Input";
 // This should be an import for actual apps
 #load "../Jai_To_Shader.jai";
 
-#load "shaders.jai";
+#load "glsl_shaders.jai";
 #load "backend.jai";
 
 main :: () {
