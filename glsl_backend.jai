@@ -21,8 +21,6 @@ write_glsl_vertex_shader :: (ctx: *Shader_Write_Context, node: *Code_Procedure_B
   append(*main_sb, "}\n");
   array_add(*ctx.functions, .{ prototype=node.header, name="main", code=builder_to_string(*main_sb) });
   
-  if ctx.waiting_functions.count return "";
-
   return write_glsl_shader_code(ctx, node);
 }
 
@@ -40,8 +38,6 @@ write_glsl_fragment_shader :: (ctx: *Shader_Write_Context, node: *Code_Procedure
   print_glsl_stmt(ctx, *main_sb, node.block, is_main=true);
   append(*main_sb, "}\n");
   array_add(*ctx.functions, .{ prototype=node.header, name="main", code=builder_to_string(*main_sb) });
-
-  if ctx.waiting_functions.count return "";
 
   return write_glsl_shader_code(ctx, node);
 }

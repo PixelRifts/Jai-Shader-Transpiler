@@ -21,7 +21,7 @@ build :: () {
   jai_to_shader_plugin.workspace = w;
   
   compiler_begin_intercept(w);
-  add_build_file("./src/hlsl_example.jai", w);
+  add_build_file("./src/glsl_example.jai", w);
   message_loop(w);
   compiler_end_intercept(w);
   
